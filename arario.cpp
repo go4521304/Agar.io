@@ -25,6 +25,8 @@ typedef struct PlayerCircle {
 typedef struct Food {	// 먹이를 담고있는 구조체
 	int x, y;
 	int active;
+
+	int r, g, b;
 } Food;
 
 HBRUSH	hBrush, oldBrush;
@@ -128,8 +130,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		{
 			food[i].x = rand() % W;
 			food[i].y = rand() % H;
+
 			food[i].active = (rand() % 1000)*(rand() % 100);
-		}	// 먹이들의 좌표, 생성 카운터 결정
+
+			food[i].r = rand() % 255;
+			food[i].g = rand() % 255;
+			food[i].b = rand() % 255;
+		}	// 먹이들의 좌표, 생성 카운터, 색상 결정
 
 		SetTimer(hWnd, 100, 10, NULL);
 
@@ -146,9 +153,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		oldPen = (HPEN)SelectObject(memDC, hPen);
 		hBrush = CreateSolidBrush(RGB(144, 238, 144));
 		oldBrush = (HBRUSH)SelectObject(memDC, hBrush);
-
 		Rectangle(memDC, 0, 0, W, H);
-
 		for (i = 1; i < 10; ++i)
 		{
 			MoveToEx(memDC, 800 / 10 * i, 0, NULL);
@@ -159,8 +164,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		}
 		SelectObject(memDC, oldPen);
 		SelectObject(memDC, oldBrush);
-		DeleteObject(oldPen);
-		DeleteObject(oldBrush);	// 판
+		DeleteObject(hPen);
+		DeleteObject(hBrush);	// 판
+
 
 		for (i = 0; i < FoodMax; ++i)
 		{
@@ -168,7 +174,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 			{
 				Ellipse(memDC, food[i].x - FoodSize, food[i].y - FoodSize, food[i].x + FoodSize, food[i].y + FoodSize);
 			}
-		}
+		}	// 먹이 생성
+
 
 		hPen = CreatePen(PS_SOLID, 2, RGB(255, 102, 0));
 		oldPen = (HPEN)SelectObject(memDC, hPen);
@@ -177,12 +184,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		Circle(First);
 		SelectObject(memDC, oldPen);
 		SelectObject(memDC, oldBrush);
-		DeleteObject(oldPen);
-		DeleteObject(oldBrush);	// 주인공 원 생성
+		DeleteObject(hPen);
+		DeleteObject(hBrush);	// 주인공 원 생성
 
 		BitBlt(hDC, 0, 0, W, H, memDC, 0, 0, SRCCOPY);
-		DeleteDC(memDC);
 		DeleteObject(hBitmap);
+		DeleteDC(memDC);
 		EndPaint(hWnd, &ps);
 		break;
 
