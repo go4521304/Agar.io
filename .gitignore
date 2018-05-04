@@ -4,3 +4,11 @@
 *.obj
 *.tlog
 *.tlog
+*.obj
+*.tlog
+*.idb
+*.pdb
+Debug/vc141.pdb
+Debug/vc141.idb
+Debug/arario.obj
+Debug/Agar.io.tlog/link.read.1.tlog
