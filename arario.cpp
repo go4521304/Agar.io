@@ -155,16 +155,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		DeleteObject(oldPen);
 		DeleteObject(oldBrush);	// 林牢傍 盔 积己
 
-		hPen = CreatePen(PS_SOLID, 2, RGB(255, 102, 0));
-		oldPen = (HPEN)SelectObject(memDC, hPen);
-		hBrush = CreateSolidBrush(RGB(255, 153, 0));
-		oldBrush = (HBRUSH)SelectObject(memDC, hBrush);
-		Circle(First);
-		SelectObject(memDC, oldPen);
-		SelectObject(memDC, oldBrush);
-		DeleteObject(oldPen);
-		DeleteObject(oldBrush);	// 林牢傍 盔 积己
-
 		BitBlt(hDC, 0, 0, W, H, memDC, 0, 0, SRCCOPY);
 		DeleteDC(memDC);
 		DeleteObject(hBitmap);
