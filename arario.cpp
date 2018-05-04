@@ -1,11 +1,13 @@
 #include <Windows.h>
+#include <time.h>
 #include <tchar.h>
 
 #define nWitdth 800
 #define nHeight 800
 
-#define MinSize 10;	// 주인공원 / 바이러스 최소 사이즈
-#define FoodSize 5;	// 먹이 사이즈
+#define MinSize 10	// 주인공원 / 바이러스 최소 사이즈
+#define FoodSize 5	// 먹이 사이즈
+#define FoodMax 500	// 먹이 최대 갯수
 
 typedef struct PlayerCircle {
 
@@ -20,13 +22,15 @@ typedef struct PlayerCircle {
 
 } Player;
 
-Player* First;
+typedef struct Food {	// 먹이를 담고있는 구조체
+	int x, y;
+	int active;
+} Food;
 
 HBRUSH	hBrush, oldBrush;
 HPEN hPen, oldPen;
 HDC memDC;
 HBITMAP hBitmap;
-
 HINSTANCE g_hInst;
 LPCTSTR lpszClass = _T("Window Class Name");
 
@@ -61,7 +65,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
 	hWnd = CreateWindow
 	(lpszClass,
 		_T("Agar.io"),
-		WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU,
+		WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
 		10,
 		10,
 		nWitdth,
@@ -93,14 +97,17 @@ void Circle(Player* p)
 	Circle(p->Child1);
 	Circle(p->Child2);
 }
-		
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 {
+	srand((unsigned int)time(NULL));
 	PAINTSTRUCT ps;
 	HDC hDC;
 
 	static int W, H;
 
+	static Player* First;	// 주인공원 생성
+	static Food food[FoodMax];	// 먹이
 	int i;
 
 	switch (iMessage)
@@ -116,6 +123,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		First->x = W / 2 + MinSize;
 		First->y = H / 2 + MinSize;
 		First->size = MinSize;
+
+		for (i = 0; i < FoodMax; ++i)
+		{
+			food[i].x = rand() % W;
+			food[i].y = rand() % H;
+			food[i].active = (rand() % 1000)*(rand() % 100);
+		}	// 먹이들의 좌표, 생성 카운터 결정
+
+		SetTimer(hWnd, 100, 10, NULL);
+
 		break;
 
 	case WM_PAINT:
@@ -124,8 +141,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		hBitmap = CreateCompatibleBitmap(hDC, W, H);
 
 		SelectObject(memDC, hBitmap);
-		
-		hPen = CreatePen(PS_SOLID, 2, RGB(50,205,50));
+
+		hPen = CreatePen(PS_SOLID, 2, RGB(50, 205, 50));
 		oldPen = (HPEN)SelectObject(memDC, hPen);
 		hBrush = CreateSolidBrush(RGB(144, 238, 144));
 		oldBrush = (HBRUSH)SelectObject(memDC, hBrush);
@@ -137,13 +154,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 			MoveToEx(memDC, 800 / 10 * i, 0, NULL);
 			LineTo(memDC, 800 / 10 * i, H);
 
-			MoveToEx(memDC,0, 800 / 10 * i, NULL);
+			MoveToEx(memDC, 0, 800 / 10 * i, NULL);
 			LineTo(memDC, W, 800 / 10 * i);
 		}
 		SelectObject(memDC, oldPen);
 		SelectObject(memDC, oldBrush);
 		DeleteObject(oldPen);
 		DeleteObject(oldBrush);	// 판
+
+		for (i = 0; i < FoodMax; ++i)
+		{
+			if (food[i].active == 0)
+			{
+				Ellipse(memDC, food[i].x - FoodSize, food[i].y - FoodSize, food[i].x + FoodSize, food[i].y + FoodSize);
+			}
+		}
 
 		hPen = CreatePen(PS_SOLID, 2, RGB(255, 102, 0));
 		oldPen = (HPEN)SelectObject(memDC, hPen);
@@ -159,6 +184,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		DeleteDC(memDC);
 		DeleteObject(hBitmap);
 		EndPaint(hWnd, &ps);
+		break;
+
+	case WM_TIMER:
+		if (wParam == 100)
+		{
+			for (i = 0; i < FoodMax; ++i)
+			{
+				if (food[i].active != 0)
+					food[i].active--;
+			}
+			InvalidateRect(hWnd, NULL, false);
+		}
 		break;
 
 	case WM_DESTROY:
