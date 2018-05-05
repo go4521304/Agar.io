@@ -1,6 +1,7 @@
 #include <Windows.h>
 #include <time.h>
 #include <tchar.h>
+#include <math.h>
 
 #define nWitdth 800
 #define nHeight 800
@@ -20,6 +21,9 @@ typedef struct PlayerCircle {
 	int size;	// 반지름
 
 	int x, y;	// 중심 좌표
+	int xTo, yTo;	// 중심으로부터 멀어진 거리
+
+	int Dead;	// 중심원으로 다시 돌아가야 할 시간
 
 	PlayerCircle* Child1;
 	PlayerCircle* Child2;	// 자식노드들
@@ -61,6 +65,8 @@ HINSTANCE g_hInst;
 LPCTSTR lpszClass = _T("Window Class Name");
 
 void Circle(Player*);	// 주인공 원 출력
+void CircleMove(Player*, int, int);		// 주인공원 이동
+bool EatFood(Player*, Food);	// 먹이를 먹었는지 확인
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam);
 
@@ -120,10 +126,57 @@ void Circle(Player* p)
 	if (p == NULL)
 		return;
 
-	Ellipse(memDC, p->x - p->size, p->y - p->size, p->x + p->size, p->y + p->size);
+	Ellipse(memDC, p->x - p->size + p->xTo, p->y - p->size + p->yTo, p->x + p->size + p->xTo, p->y + p->size + p->yTo);
 
 	Circle(p->Child1);
 	Circle(p->Child2);
+}
+
+void CircleMove(Player* p, int x, int y)	// ★좌표에 관해서 수정이 필요
+{
+	if (p == NULL)
+		return;
+
+	int tmp;
+	tmp = x - (p->x);
+	tmp = tmp / ((p->size)+2);
+	p->x += tmp;
+
+	tmp = y - (p->y);
+	tmp = tmp / ((p->size)+2);
+	p->y += tmp;
+
+	CircleMove(p->Child1, x, y);
+	CircleMove(p->Child2, x, y);
+}
+
+bool EatFood(Player* p, Food f)
+{
+	if (p == NULL)
+		return false;
+
+	int X, Y;
+	double length;
+
+	bool child1;
+	bool child2;
+
+	X = (p->x + p->xTo) - (f.x);
+	Y = (p->y + p->yTo) - (f.y);
+
+	length = sqrt((X*X) + (Y*Y));
+
+
+	if (length < p->size + FoodSize)
+	{
+		p->size += 2;
+		return true;
+	}
+
+	child1 = EatFood(p->Child1, f);
+	child2 = EatFood(p->Child2, f);
+
+	return (child1 || child2);
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
@@ -136,8 +189,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 
 	static Player* First;	// 주인공원 생성
 	static Food food[FoodMax];	// 먹이
+
 	int i;
 	int r, g, b;
+	int x, y;
 
 	switch (iMessage)
 	{
@@ -151,6 +206,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 
 		First->x = W / 2 + MinSize;
 		First->y = H / 2 + MinSize;
+		First->xTo = 0;
+		First->yTo = 0;
+
+		First->Dead = -1;	// 첫번째원은 불멸
+
 		First->size = MinSize;
 
 		for (i = 0; i < FoodMax; ++i)
@@ -233,9 +293,31 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 			{
 				if (food[i].active != 0)
 					food[i].active--;
+
+				else if (EatFood(First, food[i]))	// 먹이를 먹었으면 먹이 초기화
+				{
+					food[i].x = rand() % W;
+					food[i].y = rand() % H;
+
+					food[i].active = (rand() % 1000)*(rand() % 100);
+
+					r = rand() % 256;
+					g = rand() % 256;
+					b = rand() % 256;
+
+					food[i].penColor = CreatePen(PS_SOLID, 1, RGB(r, g, b));
+					food[i].brushColor = CreateSolidBrush(RGB(r, g, b));
+				}
 			}
 			InvalidateRect(hWnd, NULL, false);
 		}
+		break;
+
+	case WM_MOUSEMOVE:
+		x = LOWORD(lParam);
+		y = HIWORD(lParam);
+
+		CircleMove(First, x, y);
 		break;
 
 	case WM_DESTROY:
