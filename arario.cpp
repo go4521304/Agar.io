@@ -9,6 +9,10 @@
 #define FoodSize 5	// 먹이 사이즈
 #define FoodMax 500	// 먹이 최대 갯수
 
+
+/**********************
+주인공원 / 바이러스 정보
+**********************/
 typedef struct PlayerCircle {
 
 	PlayerCircle* Parent;	// 부모노드
@@ -22,22 +26,43 @@ typedef struct PlayerCircle {
 
 } Player;
 
-typedef struct Food {	// 먹이를 담고있는 구조체
-	int x, y;
-	int active;
 
-	int r, g, b;
+/************
+바이러스 관리
+************/
+typedef struct Virus {
+	Player virus;	// 바이러스 정보
+
+	Player* Prev;	// 전 바이러스
+	Player* Next;	// 다음 바이러스
+
+} Virus;
+
+/********
+먹이 정보
+********/
+typedef struct Food {
+
+	int x, y;	// 먹이 좌표
+	int active;	// 먹이 활성화 여부
+
+	HPEN penColor;	// 먹이 테두리 색
+	HBRUSH brushColor;	// 먹이 색
+
 } Food;
+
 
 HBRUSH	hBrush, oldBrush;
 HPEN hPen, oldPen;
 HDC memDC;
 HBITMAP hBitmap;
+
 HINSTANCE g_hInst;
 LPCTSTR lpszClass = _T("Window Class Name");
 
+void Circle(Player*);	// 주인공 원 출력
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam);
-void Circle(Player*);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow)
 {
@@ -89,6 +114,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
 	return Message.wParam;
 }
 
+
 void Circle(Player* p)
 {
 	if (p == NULL)
@@ -111,6 +137,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 	static Player* First;	// 주인공원 생성
 	static Food food[FoodMax];	// 먹이
 	int i;
+	int r, g, b;
 
 	switch (iMessage)
 	{
@@ -133,9 +160,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 
 			food[i].active = (rand() % 1000)*(rand() % 100);
 
-			food[i].r = rand() % 255;
-			food[i].g = rand() % 255;
-			food[i].b = rand() % 255;
+			r = rand() % 256;
+			g = rand() % 256;
+			b = rand() % 256;
+
+			food[i].penColor = CreatePen(PS_SOLID, 1, RGB(r, g, b));
+			food[i].brushColor = CreateSolidBrush(RGB(r, g, b));
 		}	// 먹이들의 좌표, 생성 카운터, 색상 결정
 
 		SetTimer(hWnd, 100, 10, NULL);
@@ -163,16 +193,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 			LineTo(memDC, W, 800 / 10 * i);
 		}
 		SelectObject(memDC, oldPen);
-		SelectObject(memDC, oldBrush);
-		DeleteObject(hPen);
-		DeleteObject(hBrush);	// 판
+		SelectObject(memDC, oldBrush);	// 판 생성
 
 
 		for (i = 0; i < FoodMax; ++i)
 		{
 			if (food[i].active == 0)
 			{
+				oldPen = (HPEN)SelectObject(memDC, food[i].penColor);
+				oldBrush = (HBRUSH)SelectObject(memDC, food[i].brushColor);
 				Ellipse(memDC, food[i].x - FoodSize, food[i].y - FoodSize, food[i].x + FoodSize, food[i].y + FoodSize);
+				SelectObject(memDC, oldPen);
+				SelectObject(memDC, oldBrush);
 			}
 		}	// 먹이 생성
 
@@ -183,14 +215,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		oldBrush = (HBRUSH)SelectObject(memDC, hBrush);
 		Circle(First);
 		SelectObject(memDC, oldPen);
-		SelectObject(memDC, oldBrush);
-		DeleteObject(hPen);
-		DeleteObject(hBrush);	// 주인공 원 생성
+		SelectObject(memDC, oldBrush);	// 주인공 원 생성
 
 		BitBlt(hDC, 0, 0, W, H, memDC, 0, 0, SRCCOPY);
+
+		DeleteObject(hPen);
+		DeleteObject(hBrush);
 		DeleteObject(hBitmap);
 		DeleteDC(memDC);
-		EndPaint(hWnd, &ps);
+		EndPaint(hWnd, &ps);	// 사용한것들 삭제
 		break;
 
 	case WM_TIMER:
