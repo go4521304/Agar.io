@@ -1,6 +1,7 @@
 #include <Windows.h>
 #include <time.h>
 #include <tchar.h>
+#include <math.h>
 
 #define nWitdth 800
 #define nHeight 800
@@ -15,15 +16,13 @@
 **********************/
 typedef struct PlayerCircle {
 
-	PlayerCircle* Parent;	// 부모노드
+	Player* Prev;	// 이전노드
+	Player* Next;	// 다음노드
+
 
 	int size;	// 반지름
 
 	int x, y;	// 중심 좌표
-
-	PlayerCircle* Child1;
-	PlayerCircle* Child2;	// 자식노드들
-
 } Player;
 
 
@@ -61,6 +60,7 @@ HINSTANCE g_hInst;
 LPCTSTR lpszClass = _T("Window Class Name");
 
 void Circle(Player*);	// 주인공 원 출력
+bool EatFood(Player*, Food);	// 먹이와 원의 충돌체크
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam);
 
@@ -115,15 +115,41 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
 }
 
 
-void Circle(Player* p)
+void Circle(Player* p)	// 원 그려주기
 {
 	if (p == NULL)
 		return;
 
 	Ellipse(memDC, p->x - p->size, p->y - p->size, p->x + p->size, p->y + p->size);
 
-	Circle(p->Child1);
-	Circle(p->Child2);
+	Circle(p->Next);
+}
+
+bool EatFood(Player* p, Food f)	// 먹이 냠냠
+{
+	if (p == NULL)
+		return false;
+
+	int X, Y;
+	double length;
+
+	bool Check;
+
+	X = p->x - (f.x);
+	Y = p->y - (f.y);
+
+	length = sqrt((X*X) + (Y*Y));
+
+
+	if (length < p->size + FoodSize)
+	{
+		p->size += 2;
+		return true;
+	}
+
+	Check = EatFood(p->Next, f);
+
+	return Check;
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
@@ -145,9 +171,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		W = nWitdth - 15;
 		H = nHeight - 20;
 		First = (Player*)malloc(sizeof(Player));
-		First->Parent = NULL;
-		First->Child1 = NULL;
-		First->Child2 = NULL;
+		First->Prev = NULL;
+		First->Next = NULL;
 
 		First->x = W / 2 + MinSize;
 		First->y = H / 2 + MinSize;
@@ -231,8 +256,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		{
 			for (i = 0; i < FoodMax; ++i)
 			{
-				if (food[i].active != 0)
+				if (food[i].active != 0)	// 먹이가 활성화가 안된 상태면 활성화 카운트 -1
 					food[i].active--;
+
+				else if (EatFood(First, food[i]))	// 활성화된 먹이이고 원 한태 먹히면 초기화
+				{
+					food[i].x = rand() % W;
+					food[i].y = rand() % H;
+
+					food[i].active = (rand() % 1000)*(rand() % 100);
+
+					r = rand() % 256;
+					g = rand() % 256;
+					b = rand() % 256;
+
+					food[i].penColor = CreatePen(PS_SOLID, 1, RGB(r, g, b));
+					food[i].brushColor = CreateSolidBrush(RGB(r, g, b));
+				}
 			}
 			InvalidateRect(hWnd, NULL, false);
 		}
